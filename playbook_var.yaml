@@ -1,0 +1,30 @@
+---
+ - name: check vars
+   hosts: if
+   become: yes
+
+   vars:
+     secret: nva_passwd
+     message1: hello
+     message2: world
+
+   tasks:
+
+   - name: enter variable
+     debug:
+       var: secret
+
+   - debug:
+       msg: "sekretnoe words {{ secret }}"
+
+   - set_fact: full="{{message1}} {{message2}} {{ansible_user}}"
+
+   - debug:
+       var: full
+   - debug:
+       var: ansible_nodename
+
+   - shell: uptime
+     register: results
+   - debug:
+       var: results.start

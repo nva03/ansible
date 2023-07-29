@@ -1,0 +1,13 @@
+---
+- name: loops
+  hosts: if
+  become: yes
+
+
+  tasks:
+  - name: Install many packaged
+    apt: name={{ item }} state=latest
+    loop:
+      - python3
+      - tree
+      - mc

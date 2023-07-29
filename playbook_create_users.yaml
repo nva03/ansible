@@ -1,0 +1,45 @@
+
+---
+- name: Add users on servers
+  hosts: scrappers                                                  #введи группу хостов
+  become: yes
+
+  vars:
+    user: kirill                                                    #поставь свое имя
+    pub_key_name: authorized_keys                                   #имя своего открытого ключа
+    pub_key: /home/nva/ansible/config_services/{{ pub_key_name }}   #путь до открытого ключа
+
+
+  tasks:
+
+  - name: add file in /etc/sudoers.d/
+    copy:
+     dest: /etc/sudoers.d/{{ user }}
+     content: |
+        {{ user }}  ALL=(ALL)  NOPASSWD: ALL
+
+  - name: Create user
+    shell: useradd -m -d /home/{{ user }} -s /bin/bash {{ user }}
+    ignore_errors: true
+
+  - name: Create folder user
+    file:
+     path: /home/{{ user }}/.ssh
+     state: directory
+     mode: 0755
+
+  - name: add pubkey in .ssh
+    copy:
+      src: "{{ pub_key }}"
+      dest: /home/{{ user }}/.ssh/
+      owner: "{{ user }}"
+      group: "{{ user }}"
+
+  - name: rename pubkey
+    shell: mv  /home/{{ user }}/.ssh/{{ pub_key_name }} /home/{{ user }}/.ssh/authorized_keys
+    ignore_errors: true
+
+  - name: change owner autorized_keys and folder
+    shell: chown -R {{ user }}:{{ user }} /home/{{ user }}
+
+

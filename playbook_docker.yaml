@@ -1,0 +1,76 @@
+---
+
+- name: Install Docker
+  hosts: if                                                 #введи группу хостов
+  become: yes
+
+  vars:
+    docker_compose: yes                                      #если нужен компоусе поставить yes
+
+
+  tasks:
+
+  - name: Check Linux Version
+    debug:
+      var: ansible_os_family
+
+  - block:     # =========Block for Debian========
+
+    - name: Update and Upgrade repo
+      apt:
+       update_cache: yes
+       force_apt_get: yes
+       cache_valid_time: 3600
+
+    - name: Upgrade all apt packages
+      apt:
+        upgrade:  "dist"
+        force_apt_get: yes
+
+    - name: Install packages
+      apt:
+       name:
+        - fail2ban
+        - htop
+        - mc
+        - ca-certificates
+        - curl
+        - gnupg
+        - lsb-release
+        - apt-transport-https
+       state: latest
+
+    - name: Add signing key
+      ansible.builtin.apt_key:
+          url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+          state: present
+
+    - name: Add repository into sources list
+      ansible.builtin.apt_repository:
+          repo: "deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+          state: present
+          filename: docker
+
+    - name: Install packages Docker
+      apt:
+       name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+       update_cache: true
+       state: latest
+
+    - name: Install Docker-compose
+      shell: "{{ item }}"
+      loop:
+        - curl -SL https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+        - chmod a+x /usr/local/bin/docker-compose
+       # - sudo rm
+       # - sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      when: docker_compose
+      ignore_errors: yes
+    when: ansible_os_family == "Debian"
+
+#  block:            # =================Write Block for RedHat==========================

@@ -1,0 +1,22 @@
+
+---
+- name: Copy
+  hosts: dev-vue                                                 #введи группу хостов
+  become: yes
+
+  vars:
+    user: nva
+    file_name: zabbix_mplab.conf
+    src_file: /home/{{ user }}/ansible/config_services/{{ file_name }}                                  #поставь свой файл
+    dst_file: /home/{{ user }}/{{ file_name }}
+
+
+  tasks:
+
+  - name: copy file in dst sever
+    copy:
+     src: "{{ src_file }}"
+     dest: "{{ dst_file }}"
+     owner: "{{ user }}"
+     group: "{{ user }}"
+     mode: '0755'

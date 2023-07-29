@@ -1,0 +1,112 @@
+---
+
+- name: Add users on servers
+  hosts: if                                                 #введи группу хостов
+  become: yes
+
+  vars:
+    docker_compose: yes                                      #если нужен компоусе поставить yes
+    gitlab_runner: yes                                       #if need gitlab_runner change yes
+
+  tasks:
+
+  - name: Check Linux Version
+    debug:
+      var: ansible_os_family
+
+  - block:     # =========Block for Debian========
+
+    - name: Update and Upgrade repo
+      apt:
+       update_cache: yes
+       force_apt_get: yes
+       cache_valid_time: 3600
+
+    - name: Upgrade all apt packages
+      apt:
+        upgrade: "dist"
+        force_apt_get: yes
+
+    - name: Install packages
+      apt:
+        name:
+         - fail2ban
+         - htop
+         - mc
+         - ca-certificates
+         - curl
+         - gnupg
+         - lsb-release
+         - apt-transport-https
+         - pip
+        state: latest
+
+    - name: Add signing key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+        state: present
+
+    - name: Add repository into sources list
+      ansible.builtin.apt_repository:
+         repo: deb https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+         state: present
+         filename: docker
+
+
+    - name: Install Docker
+      apt:
+       name:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+       state: latest
+       update_cache: true
+      notify:
+         - restart Docker
+
+    - name: Install Docker-compose
+      shell: "{{ item }}"
+      loop:
+         - curl -SL https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
+         - chmod a+x /usr/local/bin/docker-compose
+         - sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+      when: docker_compose
+      notify:
+         - restart Docker
+      ignore_errors: yes
+
+    - name: Install Docker module for Python
+      pip:
+       name: docker
+
+    - name: Install Gitlab_runner in docker
+      shell:
+        cmd: "{{ item }}"
+      timeout: 120
+      when: gitlab_runner
+      loop:
+        - mkdir -p /opt/gitlab-runner
+        - docker run -d --name gitlab-runner --restart always -v /var/run/docker.sock:/var/run/docker.sock -v /opt/gitlab-runner/:/etc/gitlab-runner -v gitlab-runner:/home/gitlab-runner gitlab/gitlab-runner:latest
+    when: ansible_os_family == "Debian"
+
+  - name: change timezone Europe Moscow
+    shell: ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+
+  - name: fail2ban started
+    systemd:
+      name: fail2ban
+      state: started
+ignore      enabled: yes
+
+  handlers:
+    - name: restart Docker
+      service:
+        name:
+          - docker
+          - docker-compose
+        state: restarted
+        enabled: yes
+
+

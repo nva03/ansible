@@ -1,0 +1,65 @@
+---
+
+- name: Add users on servers
+  hosts: scrappers                                                 #введи группу хостов
+  become: yes
+
+  vars:
+   user: nva
+   file_name: rules.v4
+   src_file: /home/{{ user }}/ansible/config_services/{{ file_name }}                                  #поставь свой файл
+   dst_file: /etc/iptables/{{ file_name }}
+
+
+  tasks:
+
+  - name: Update cache
+    apt:
+      update_cache: yes
+      force_apt_get: yes
+      cache_valid_time: 3600
+    ignore_errors: yes
+
+  - name: Install pkg
+    apt:
+      name:
+        - iptables
+        - iptables-persistent
+        - ipset
+      state: latest
+
+  - name: add rules
+    shell: "{{ item }}"
+    loop:
+      - ipset create anynodes hash:net family inet hashsize 1024 maxelem 65536
+      - ipset add anynodes 192.168.100.0/24
+      - ipset add anynodes 192.168.121.0/24
+      - ipset add anynodes 192.168.120.0/24
+      - ipset add anynodes 192.168.123.0/24
+      - ipset add anynodes 10.8.0.0/24
+#      - iptables A INPUT -p tcp -m tcp --dport 22 -m set --match-set anynodes src  -j ACCEPT
+#      - iptables A INPUT -m set --match-set anynodes src -j ACCEPT
+#      - iptables A OUTPUT -m set --match-set anynodes src -j ACCEPT
+#      - iptables A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+#      - iptables A INPUT -p icmp -j ACCEPT
+#      - iptables A INPUT -i lo -j ACCEPT
+#      - iptables A INPUT -p tcp -m tcp --dport 8080 -m set --match-set anynodes src -j ACCEPT
+#      - iptables A INPUT -p tcp -m tcp --dport 8080 -j DROP
+    ignore_errors: yes
+
+  - name: copy file in dst sever
+    copy:
+     src: "{{ src_file }}"
+     dest: "{{ dst_file }}"
+     owner: root
+     group: root
+     mode: '0755'
+
+  - name: restart iptables
+    systemd:
+       name: "{{ item }}"
+       state: started
+       enabled: yes
+    loop:
+      - iptables
+      - ufw

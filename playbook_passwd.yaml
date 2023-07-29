@@ -1,0 +1,17 @@
+---
+- name: Create passwd for user
+  hosts: if
+  become: yes
+
+  vars:
+     user: "nva"
+     password: "9086620032vN"
+
+
+  tasks:
+
+   - name: change password
+     ansible.builtin.user:
+       name: "{{ user }}"
+       state: present
+       password: "{{  password | password_hash('sha512') }}"

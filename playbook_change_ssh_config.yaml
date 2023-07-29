@@ -1,0 +1,31 @@
+---
+- name: Add users on servers
+  hosts: minio                                                 #введи группу хостов
+  become: yes
+
+  vars:
+   user: root
+   local_user: nva
+   sshd_config: /home/{{ local_user }}/ansible/config_services/sshd_config
+
+  tasks:
+
+  - name: Copy ssh config on remote host
+    copy:
+      src: "{{ sshd_config }}"
+      dest: /etc/ssh/
+      owner: "{{ user }}"
+      group: "{{ user }}"
+    notify:
+      - Restart sshd and ssh
+
+  handlers:
+
+   - name: Restart sshd and ssh
+     systemd:
+        name: "{{ item }}"
+        state: restarted
+     loop:
+       - sshd
+       - ssh
+    # when: если файл изменился надо посмотреть доку
